@@ -1,1 +1,1 @@
-{"spu":"10032705419915","fields":["visitors","gmv","customers","add_customers","spend","inquiry"],"specs":{},"rows":{"10195000469543":{"2026-01-02":[1.0,0.0,0.0,0.0,0.0,0]}}}
+{"spu":"10032705419915","fields":["visitors","gmv","net","customers","add_customers","spend","inquiry","clicks","imps"],"specs":{},"rows":{"10195000469543":{"2026-01-02":[1.0,0.0,0.0,0.0,0.0,0.0,0,0,0]}}}

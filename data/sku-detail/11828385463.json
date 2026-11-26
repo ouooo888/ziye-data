@@ -1,1 +1,1 @@
-{"spu":"11828385463","fields":["visitors","gmv","customers","add_customers","spend","inquiry"],"specs":{},"rows":{"69882703933":{"2025-12-24":[1.0,0.0,0.0,0.0,0.0,0]}}}
+{"spu":"11828385463","fields":["visitors","gmv","net","customers","add_customers","spend","inquiry","clicks","imps"],"specs":{},"rows":{"69882703933":{"2025-12-24":[1.0,0.0,0.0,0.0,0.0,0.0,0,0,0]}}}

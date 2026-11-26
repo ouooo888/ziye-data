@@ -183,6 +183,7 @@ h1 { font-size: 20px; margin: 0 0 4px; }
 .data-table.sortable th:hover { color: #2b3242; }
 .data-table.sortable th.sorted { color: #2b3242; background: #e6ecf9; }
 .data-table th.ta-l, .data-table td.ta-l { text-align: left; }
+.data-table th.ta-r, .data-table td.ta-r { text-align: right; }
 .data-table td.warn-cell { color: #a8660e; }
 /* 线下销售额：手工登记的数据，用淡底色区分「人填的」和「系统导的」 */
 .data-table td.off-cell { color: #5b4a9e; background: #f4f2fd; font-weight: 600; }

@@ -2547,26 +2547,32 @@
     function paint(data) {
       if (token !== skuReqToken) return;   // 已被新请求取代
       var fields = data.meta && data.meta.fields
-        ? data.meta.fields : ['visitors', 'gmv', 'customers', 'add_customers', 'spend', 'inquiry'];
+        ? data.meta.fields : ['visitors', 'gmv', 'net', 'customers', 'add_customers',
+            'spend', 'inquiry', 'clicks', 'imps'];
       var ix = {}; fields.forEach(function (f, i) { ix[f] = i; });
       var out = [];
       Object.keys(data.rows || {}).forEach(function (sku) {
-        var days = data.rows[sku], a = { sku: sku, visitors: 0, gmv: 0, customers: 0,
-          add_customers: 0, spend: 0, inquiry: 0, days: 0 };
+        var days = data.rows[sku], a = { sku: sku, visitors: 0, gmv: 0, net: 0, customers: 0,
+          add_customers: 0, spend: 0, inquiry: 0, clicks: 0, imps: 0, days: 0 };
         Object.keys(days).forEach(function (d) {
           if (d < range.start || d > range.end) return;
           var v = days[d];
           a.visitors += v[ix.visitors] || 0;
           a.gmv += v[ix.gmv] || 0;
+          a.net += v[ix.net] === undefined ? (v[ix.gmv] || 0) : (v[ix.net] || 0);
           a.customers += v[ix.customers] || 0;
           a.add_customers += v[ix.add_customers] || 0;
           a.spend += v[ix.spend] || 0;
           a.inquiry += v[ix.inquiry] || 0;
+          a.clicks += v[ix.clicks] || 0;
+          a.imps += v[ix.imps] || 0;
           a.days++;
         });
         if (!a.days) return;
         a.cart_rate = a.visitors > 0 ? a.add_customers / a.visitors : null;
         a.roi = a.spend > 0 ? a.gmv / a.spend : null;
+        // 搜索点击率＝区间点击次数÷区间曝光次数（先汇总再相除，不能对日均率取平均）
+        a.ctr = a.imps > 0 ? a.clicks / a.imps : null;
         out.push(a);
       });
       out.sort(function (x, y) { return y.gmv - x.gmv; });
@@ -2580,7 +2586,13 @@
               : '<span class="dim" title="无规格登记 · SKU ' + esc(r.sku) + '">' + esc(r.sku) + '</span>';
           }, raw: true, cls: 'ta-l' },
         { label: '访客数', get: function (r) { return r.visitors; }, fmt: M.count },
+        { label: '搜索点击率', get: function (r) {
+            if (r.ctr === null) return '<span class="dim">—</span>';
+            return '<span title="点击 ' + esc(M.count(r.clicks)) + ' / 曝光 ' +
+              esc(M.count(r.imps)) + '">' + esc(M.pct(r.ctr)) + '</span>';
+          }, raw: true, cls: 'ta-r' },
         { label: '销售金额', get: function (r) { return r.gmv; }, fmt: M.money },
+        { label: '净销售额', get: function (r) { return r.net; }, fmt: M.money },
         { label: '销售人数', get: function (r) { return r.customers; }, fmt: M.count },
         { label: '加购人数', get: function (r) { return r.add_customers; }, fmt: M.count },
         { label: '加购率', get: function (r) { return r.cart_rate; }, fmt: M.pct },
@@ -2588,16 +2600,23 @@
         { label: '询单人数', get: function (r) { return r.inquiry; }, fmt: M.count }
       ];
       table.innerHTML = out.length ? tableHtml(cols, out) :
-        '<tbody><tr><td colspan="8" class="ta-l dim">该周期没有 SKU 级数据</td></tr></tbody>';
+        '<tbody><tr><td colspan="10" class="ta-l dim">该周期没有 SKU 级数据</td></tr></tbody>';
       var tot = out.reduce(function (s, r) {
-        ['visitors', 'gmv', 'customers', 'add_customers', 'spend', 'inquiry'].forEach(function (k) { s[k] += r[k]; });
+        ['visitors', 'gmv', 'net', 'customers', 'add_customers', 'spend', 'inquiry', 'clicks', 'imps']
+          .forEach(function (k) { s[k] += r[k]; });
         return s;
-      }, { visitors: 0, gmv: 0, customers: 0, add_customers: 0, spend: 0, inquiry: 0 });
-      foot.innerHTML = '合计：访客 ' + esc(M.count(tot.visitors)) + ' · 销售金额 ' + esc(M.money(tot.gmv)) +
+      }, { visitors: 0, gmv: 0, net: 0, customers: 0, add_customers: 0, spend: 0, inquiry: 0,
+           clicks: 0, imps: 0 });
+      var totCtr = tot.imps > 0 ? M.pct(tot.clicks / tot.imps) : '—';
+      foot.innerHTML = '合计：访客 ' + esc(M.count(tot.visitors)) + ' · 搜索点击率 ' + esc(totCtr) +
+        ' · 销售金额 ' + esc(M.money(tot.gmv)) + ' · 净销售额 ' + esc(M.money(tot.net)) +
         ' · 销售人数 ' + esc(M.count(tot.customers)) + ' · 加购人数 ' + esc(M.count(tot.add_customers)) +
         ' · 推广费用 ' + esc(M.money(tot.spend)) + ' · 询单人数 ' + esc(M.count(tot.inquiry)) +
         '<br>第一列显示「SKU 规格」（来自全店sku表格.xlsx 的 SKU规格列），鼠标悬停看 SKU 编码；未登记规格的显示编码。' +
-        '<br>销售/访客/加购来自「SKU 维度商品销售明细」（按日累加，同一顾客多日会重复计）；' +
+        '<br>销售/净销售额/访客/加购/搜索点击率来自「SKU 维度商品销售明细」（按日累加，同一顾客多日会重复计）；' +
+        '净销售额＝成交金额−取消及售后退款金额（按退款申请日归期，单日可为负，不追溯调整往期）；' +
+        '搜索点击率＝区间搜索点击次数÷搜索曝光次数（先汇总再相除，不是日均率的平均）；' +
+        '净销售额用源表原始退款，不含整店层的退款剔除规则，与首页净销售额会有差异；' +
         '推广费用按跟单 SKU ID 归集；询单人数按 (日期,顾客,SKU) 去重，不与其它列做严格漏斗。' +
         '合计可能与该单品 SPU 级数字略有差异：未匹配 SKU→SPU 字典的行不进本表。';
     }
