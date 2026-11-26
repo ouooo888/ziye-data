@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>紫叶专卖店 · 数据看板工作台</title>
+<link rel="stylesheet" href="assets/styles.css?v=202611261101k">
+</head>
+<body>
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="gate-title">紫叶数据看板</div>
+    <div class="gate-sub">请输入访问口令</div>
+    <input id="gateInput" class="gate-input" type="password" placeholder="访问口令" autocomplete="off">
+    <button id="gateBtn" class="btn primary">进入</button>
+    <div id="gateErr" class="gate-err"></div>
+  </div>
+</div>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">W</span><span>WORKBENCH <em>v0.1.0</em></span></div>
+    <div class="top-actions">
+      <select id="shopSelect" class="select" title="店铺切换">
+        <option value="642850">紫叶户外家具专卖店（642850）</option>
+      </select>
+      <button class="btn todo" data-todo="导入该店已下载报表">导入该店已下载报表</button>
+      <button class="btn todo" data-todo="立即更新昨天">立即更新昨天</button>
+      <button class="btn todo" data-todo="检查平台登录">检查平台登录</button>
+      <button class="btn todo" data-todo="每日自动更新">每日自动更新</button>
+      <button class="btn todo" data-todo="导出静态看板">导出静态看板</button>
+      <button class="btn todo" data-todo="导出同步数据包">导出同步数据包</button>
+      <button class="btn" id="btnRebuild" title="重新读取桌面源表并重建数据集">重建数据</button>
+      <button class="btn primary todo" data-todo="分析当前页面">分析当前页面</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="sidebar">
+      <div class="nav-group">
+        <div class="nav-title">数据接入</div>
+        <a class="nav-item todo" data-todo="Chromium 浏览器">Chromium 浏览器</a>
+        <a class="nav-item todo" data-todo="店铺管理">店铺管理</a>
+        <a class="nav-item todo" data-todo="自动下载数据">自动下载数据</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">分析</div>
+        <a class="nav-item active" data-view="bi">BI看板</a>
+        <a class="nav-item" data-view="spu">商品明细</a>
+        <a class="nav-item" data-view="detail">单品分析</a>
+        <a class="nav-item" data-view="adspu">每日推广</a>
+        <a class="nav-item" data-view="plan">计划分析</a>
+        <a class="nav-item" data-view="compare">数据对比</a>
+        <a class="nav-item" data-view="category">类目分析</a>
+        <a class="nav-item" data-view="service">客服数据</a>
+        <a class="nav-item" data-view="master">数据总表</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">智能</div>
+        <a class="nav-item" data-view="diagnosis">AI诊断报表</a>
+        <a class="nav-item" data-view="monitor">业绩监控</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">设置</div>
+        <a class="nav-item" data-view="datasource">数据源设置</a>
+        <a class="nav-item todo" data-todo="权限设置">权限设置</a>
+      </div>
+      <div class="sidebar-foot">本地工作空间<br><span id="rootPath">dashboard/</span></div>
+    </nav>
+
+    <main class="main">
+      <div class="page-head">
+        <div>
+          <h1 id="viewTitle">BI看板</h1>
+          <div class="sub" id="metaLine">加载中…</div>
+        </div>
+        <div class="head-right">
+          <span class="chip" id="periodChip">当月</span>
+          <span class="chip ghost" id="rangeChip">—</span>
+        </div>
+      </div>
+
+      <div class="periods" id="periods">
+        <button class="period active" data-mode="this_month">当月</button>
+        <button class="period" data-mode="last_month">上月</button>
+        <div class="month-pick-wrap">
+          <button class="period" id="monthToggle" type="button" title="按自然月选择（参考商智「月」）">月</button>
+          <div class="month-picker" id="monthPicker" hidden>
+            <div class="mp-head">
+              <button class="mp-nav" id="mpPrevYear" type="button" aria-label="上一年">‹</button>
+              <b id="mpYear">2026年</b>
+              <button class="mp-nav" id="mpNextYear" type="button" aria-label="下一年">›</button>
+            </div>
+            <div class="mp-grid" id="mpGrid"></div>
+            <div class="mp-foot" id="mpFoot"></div>
+          </div>
+        </div>
+        <button class="period" data-mode="last_7">近7天</button>
+        <button class="period" data-mode="last_15">近15天</button>
+        <button class="period" data-mode="last_30">近30天</button>
+        <button class="period" data-mode="prev_period">上一周期</button>
+        <button class="period" data-mode="yoy">同比</button>
+        <button class="period" data-mode="single_day" id="singleDayBtn" type="button" title="只看某一天">单日</button>
+        <input type="date" class="period-date" id="singleDate" hidden title="选择要看的那一天">
+        <label class="compare-toggle"><input type="checkbox" id="comparePrev" checked> 对比上一周期</label>
+      </div>
+
+      <section id="view-bi">
+        <div class="kpis" id="kpis"></div>
+
+        <section class="card">
+          <div class="card-head"><h2>日趋势 &amp; 访客趋势</h2><span class="muted">随上方周期切换联动</span></div>
+          <div class="trend-block">
+            <div class="legend"><i class="dot dot-net"></i>净销售额 <i class="dot dot-spend"></i>推广花费</div>
+            <div id="trend" class="trend"></div>
+            <div class="card-note">净销售额按申请日归期、不追溯，单日可为负（例：11/03 为 −2859.73），属已确认口径。</div>
+          </div>
+          <div class="trend-block">
+            <div class="legend"><i class="dot dot-visitor"></i>访客 <i class="dot dot-cust"></i>成交客户</div>
+            <div id="visitorTrend" class="trend"></div>
+            <div class="card-note">访客 / 成交客户按日归期，取自每日销售明细的访客与成交客户数，与「日趋势」同一周期。</div>
+          </div>
+        </section>
+
+        <div class="grid-3">
+          <section class="card">
+            <div class="card-head"><h2>类目推广花费</h2><span class="muted">按 SKU→SPU 字典归类</span></div>
+            <div id="categoryRank"></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>类目销售额</h2><span class="muted">全渠道净销售 · 含线下</span></div>
+            <div id="categorySales"></div>
+            <div class="card-note">销售额 = 各 SPU 线上成交 − 退款 + 线下（按 SPU 反查类目聚合），与「类目推广花费」共用同一套细分类目口径，按所选周期求和。</div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>单品成交 Top</h2><span class="muted">全渠道净销售 · 含线下</span></div>
+            <div id="spuRank"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-adspu" hidden>
+        <div class="notice">
+          <strong>本页口径：单品 × 天的推广花费下钻</strong>。数据取自京准通「每日报表」SKU 日明细，
+          按 <code>跟单SKU ID</code> 反查 SPU，<b>未匹配到 SPU 的投放不进单品层</b>（仍计入整店口径）。
+          左侧选一个单品，右侧<b>只列它有花费的计划</b>（或场景），0 花费的不占位；下钻维度可切「推广计划」/「营销场景」。
+          <b>推广计划维度已覆盖全部日期</b>（历史区间于 2026-11-10 按同一报表定义补导，
+          逐日花费与旧文件对账一致）。若某日报表缺该维度，页面会自动降级到场景并明确标注，
+          不用场景名或店内均值冒充计划、不估算回填。
+        </div>
+        <div class="periods">
+          <div class="seg" id="adspuModeSeg" role="group" aria-label="时间口径">
+            <button type="button" class="seg-btn active" data-mode="period">区间</button>
+            <button type="button" class="seg-btn" data-mode="day">单日</button>
+          </div>
+          <label class="compare-toggle">日期
+            <select id="adspuDate" class="select"></select>
+          </label>
+          <label class="compare-toggle">横轴维度
+            <select id="adspuDim" class="select">
+              <option value="plan">推广计划</option>
+              <option value="scene">营销场景</option>
+            </select>
+          </label>
+          <label class="compare-toggle">单品行数
+            <select id="adspuLimit" class="select">
+              <option value="50">Top 50</option>
+              <option value="30">Top 30</option>
+              <option value="100">Top 100</option>
+              <option value="0">全部</option>
+            </select>
+          </label>
+          <input id="adspuSearch" class="select" type="text" placeholder="搜货号 / SPU 编码" />
+          <span class="chip ghost" id="adspuRows">—</span>
+        </div>
+        <div class="kpis" id="adspuKpis"></div>
+        <div class="notice" id="adspuCoverage" hidden></div>
+        <section class="card">
+          <div class="card-head">
+            <h2>单品 × <span id="adspuDimName">推广计划</span> · 当日下钻</h2>
+            <span class="muted" id="adspuNote">左侧选单品，右侧只列它有花费的计划</span>
+          </div>
+          <div class="adspu-layout">
+            <div class="adspu-picks">
+              <div class="adspu-picks-head">单品 <span class="muted" id="adspuPickCount">—</span></div>
+              <div class="adspu-pick-list" id="adspuPickList"></div>
+            </div>
+            <div class="adspu-detail">
+              <div class="adspu-detail-head">
+                <h3 id="adspuDetailTitle">—</h3>
+                <span class="muted" id="adspuDetailNote">—</span>
+              </div>
+              <div class="tbl-wrap"><table class="data-table" id="adspuDetailTable"></table></div>
+              <div class="card-note" id="adspuFoot"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="view-plan" hidden>
+        <div class="notice">
+          <strong>本页口径：只统计关键词计划</strong>（<code>关键词类型=关键词</code>）。已排除智能投放行
+          （如「全店推广计划」）；词级报表本身不含「常规推广-商品成交」「全店商品推广」等场景。
+          京准通「搜索词效果报表」导出的是查询区间汇总（日期列形如 <code>20261101~20261105</code>），没有分日行，
+          <b>不并入 BI 看板的日趋势 / 日环比 / 整店 ROI 分母</b>；整店总花费仍取「每日推广报表」SKU 日明细。
+        </div>
+        <div class="periods">
+          <label class="compare-toggle">统计区间
+            <select id="planPeriod" class="select"></select>
+          </label>
+          <span class="chip ghost" id="planRows">—</span>
+        </div>
+        <div class="kpis" id="planKpis"></div>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>计划 × 关键词效果</h2>
+            <span class="muted" id="planPkNote">左侧选计划，右侧看该计划的关键词明细</span>
+          </div>
+          <div class="pk-layout">
+            <div class="pk-plans" id="planPkPlans"></div>
+            <div class="pk-detail">
+              <div class="pk-toolbar">
+                <input id="planPkSearch" class="select" type="text" placeholder="搜索该计划下的关键词" />
+                <span class="chip ghost" id="planPkCount">—</span>
+              </div>
+              <div class="tbl-wrap pk-wrap"><table class="data-table sortable" id="planPkTable"></table></div>
+              <div class="card-note" id="planPkFoot"></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head"><h2>搜索词 Top · 按花费</h2><span class="muted">实际触发词，关键词口径</span></div>
+            <div id="planTerms"></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>搜索词 Top · 按成交额</h2><span class="muted">仅列有成交的词</span></div>
+            <div id="planTermsByAmount"></div>
+          </section>
+        </div>
+        <section class="card">
+          <div class="card-head"><h2>关键词 Top</h2><span class="muted">自投词，区别于搜索词；关键词口径</span></div>
+          <div id="planKeywords"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>关键词 × 市场参考</h2><span class="chip warn" id="planMarketBadge">待接入</span></div>
+          <div id="planMarketNote" class="market-grid">
+            <div class="market-col">
+              <h3>② 商智 · 行业关键词参考（热搜榜）</h3>
+              <p class="card-note">市场数值为<b>区间</b>（如「8万~10万」「5%~7.5%」「￥0.39」），非精确值；
+                京准通行业分析尚未导出，本卡暂只有商智热搜榜。两源<b>独立接入、不混算</b>，绝不用店内均值冒充市场数据。
+                <br>导出路径：商智「市场 → 行业关键词 → <b>热门关键词</b>（下载数据）」；京准通「报表 → 报表总览 → 行业分析 → <b>流量解析</b>」（或「工具 → 数据中心 → 行业分析 → 流量解析」）。</p>
+              <div class="market-tools">
+                <input id="planMarketSearch" class="select" type="text" placeholder="在热搜榜中搜词（如 伞 / 躺椅）" />
+                <span class="chip ghost" id="planMarketCount">—</span>
+              </div>
+              <div class="tbl-wrap market-scroll"><table class="data-table" id="planMarketTable"></table></div>
+            </div>
+            <div class="market-col">
+              <h3>当前计划关键词 × 市场参考</h3>
+              <p class="card-note">用当前所选计划的每个关键词去商智热搜榜做子串匹配，给出「我的 vs 市场」对比；
+                标 ▲ 高于市场、▼ 低于市场、✓ 优于参考价（CPC 越低越好）。未命中的词不硬拼。</p>
+              <div class="tbl-wrap"><table class="data-table" id="planMarketMatch"></table></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>口径说明</h2><span class="muted">区间汇总不可拆日</span></div>
+          <div id="planNote"></div>
+        </section>
+      </section>
+
+      <section id="view-master" hidden>
+        <div class="notice">
+          <strong>参考对照层 + 已启用输入</strong>：桌面根目录「11月专卖店数据总.xlsx」为人工加工总表，
+          含线下销售 / 补单 / 客服询单 / 渠道访客拆分 / 去年同期，是 37 列明细没有的维度。
+          其「实际销售」按退款追溯冲减、与看板口径不一致，<b>只读展示，绝不替换 daily</b>。
+          按你的要求：<b>月度目标 35W 已启用</b>（业绩监控页）；<b>「线下」逐日列已按日期并入每日销售额</b>，
+          净销售额 / 综合ROI / 推广占比 / 达成率 / 整店总花费主口径全部用并入后的数字；
+          整店总花费仍只取每日推广 CSV 的 SKU 日明细，线下单无推广归因、不新增花费。
+        </div>
+        <div class="kpis" id="masterKpis"></div>
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head"><h2>11 月日级 · 客服与流量明细</h2><span class="muted">来自总表「专卖店数据」</span></div>
+            <div class="tbl-wrap"><table class="data-table" id="masterDaily"></table></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>口径冲突与读取注意</h2><span class="muted">4 条</span></div>
+            <div id="masterConflicts"></div>
+          </section>
+        </div>
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head"><h2>25 / 26 年同比对照</h2><span class="muted">来自总表「同比」</span></div>
+            <div class="tbl-wrap"><table class="data-table" id="masterYoy"></table></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>2025 年 11 月 · 去年同期</h2><span class="muted" id="masterLyCount">—</span></div>
+            <div class="tbl-wrap"><table class="data-table" id="masterLastYear"></table></div>
+            <div class="card-note">口径不同（总表含线下、退款追溯），仅作参考对照，不可与看板净销售额直接相减算同比。</div>
+          </section>
+        </div>
+        <section class="card">
+          <div class="card-head"><h2>明细成交额 vs 总表线上销售 · 逐日核对</h2><span class="muted">冲突实证</span></div>
+          <div class="tbl-wrap"><table class="data-table" id="masterCross"></table></div>
+        </section>
+      </section>
+
+      <section id="view-monitor" hidden>
+        <div class="notice">
+          <strong>目标已启用 · 线下已并入主口径</strong>：月度目标取总表「专卖店数据」B2 = 35W；
+          达成率分子为<b>含线下</b>的看板净销售额（线上成交 + 线下 − 退款，退款按申请日归期）。
+          线下金额<b>唯一来源是「线下销售登记表」</b>，按日期并入 daily，
+          <b>六张 KPI 卡 / 综合ROI / 推广占比 / 整店总花费主口径同步重算</b>；
+          未登记的日期自动视为 0，总表 D 列与 7 份类目表 F 列只作对账参考，不用再填；
+          整店总花费本身仍只取每日推广 CSV 的 SKU 日明细，线下单无推广归因。
+        </div>
+        <div class="kpis" id="monitorKpis"></div>
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head"><h2>目标达成与缺口预警</h2><span class="muted" id="monitorPace">—</span></div>
+            <div id="monitorGap"></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>线下交易并入 · 逐日主口径</h2><span class="muted">与总表实际销售对账</span></div>
+            <div class="tbl-wrap"><table class="data-table" id="monitorOffline"></table></div>
+          </section>
+        </div>
+        <section class="card">
+          <div class="card-head"><h2>7 个专卖店类目 · 分目标达成</h2><span class="muted" id="monitorCatNote">—</span></div>
+          <div class="card-note"><b>线下只填一张表</b>：打开「917 AI\线下销售登记\线下销售登记_YYYY-MM.xlsx」，按 日期 / 商品货号 / 件数 / 金额 / 客户数 逐行登记（一位顾客买多个货号请填同一个「同单标记」），保存后说「每日更新」即生效。整店日级、7 类目、单品三层自动按货号归集并平账；未登记的日期自动视为 0，7 份类目表的 F 列与桌面总表的 D 列不用再补。类目达成率 / ROI / 推广占比都用含线下口径；货号不在 7 类映射内时单列「未归类」，不摊派。</div>
+          <div class="tbl-wrap"><table class="data-table" id="monitorCategory"></table></div>
+          <div class="card-note" id="monitorCatRule"></div>
+        </section>
+      </section>
+
+      <section id="view-detail" hidden>
+        <div class="notice">
+          <strong>单品口径</strong>：<span id="detailNotice">—</span>
+        </div>
+        <div class="spu-toolbar">
+          <input class="select" id="detailSearch" type="search" placeholder="搜索货号 / SPU 编码" autocomplete="off">
+          <select class="select detail-pick" id="detailPick" title="按本周期销售额排序"></select>
+          <span class="chip ghost" id="detailRank">—</span>
+          <span class="spu-toolbar-spacer"></span>
+          <button class="btn" id="detailPrev">◀ 上一款</button>
+          <button class="btn" id="detailNext">下一款 ▶</button>
+        </div>
+
+        <div class="kpis" id="detailKpis"></div>
+
+        <div class="profile" id="detailProfile"></div>
+
+        <section class="card">
+          <div class="card-head"><h2>日销售额 · 线上 / 线下堆叠</h2>
+            <span class="legend"><i class="dot dot-on"></i>线上 <i class="dot dot-off"></i>线下 <i class="dot dot-cloud"></i>净销售额</span>
+          </div>
+          <div id="detailChartGmv" class="trend"></div>
+          <div class="card-note">柱为当日销售额（线上成交 + 线下登记），折线为净销售额（销售额 − 退款，退款按申请日归期、不回溯），单日可为负。</div>
+        </section>
+
+        <div class="grid-2 even">
+          <section class="card">
+            <div class="card-head"><h2>访客与加购率</h2><span class="muted">加购率仅线上</span></div>
+            <div id="detailChartVisit" class="trend"></div>
+            <div class="card-note">柱为日访客数（左轴），线为当日加购人数 ÷ 访客数（右轴）。线下无访客概念，纯线下成交日该点为 0。</div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>推广费用与 ROI</h2><span class="muted">按 SKU→SPU 归集</span></div>
+            <div id="detailChartAd" class="trend"></div>
+            <div class="card-note">柱为当日推广花费（左轴），线为当日 ROI = 全渠道销售额 ÷ 花费（右轴）。花费为 0 的日子 ROI 断开不连。</div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head"><h2>推广花费分布</h2><span class="muted" id="detailSceneNote">—</span></div>
+          <div id="detailSceneSummary" class="spu-summary"></div>
+          <div id="detailSceneBars" class="scene-bars"></div>
+          <div id="detailSceneLegend" class="scene-legend"></div>
+          <div class="tbl-wrap"><table class="data-table" id="detailSceneTable"></table></div>
+          <div class="card-note" id="detailSceneFootNote"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>关键词花费</h2><span class="muted" id="detailKwNote">—</span></div>
+          <div id="detailKwSummary" class="spu-summary"></div>
+          <div class="tbl-wrap kw-wrap"><table class="data-table" id="detailKwTable"></table></div>
+          <div class="card-note" id="detailKwFootNote"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>日明细</h2><span class="muted" id="detailRowsNote">—</span></div>
+          <div class="tbl-wrap detail-wrap"><table class="data-table" id="detailTable"></table></div>
+          <div class="card-note" id="detailFootNote"></div>
+        </section>
+      </section>
+
+      <section id="view-spu" hidden>
+        <div class="notice">
+          <strong>明细口径</strong>：<span id="spuNoticeText">—</span>
+        </div>
+        <div class="spu-toolbar">
+          <input class="select" id="spuSearch" type="search" placeholder="搜索货号 / SPU 编码 / 类目" autocomplete="off">
+          <select class="select" id="spuScope">
+            <option value="all">全部单品</option>
+            <option value="active">有成交或有推广花费</option>
+            <option value="sold">仅有成交</option>
+            <option value="ad">仅有推广花费</option>
+            <option value="idle">有访客但零成交</option>
+          </select>
+          <span class="chip ghost" id="spuCount">—</span>
+          <span class="spu-toolbar-spacer"></span>
+          <button class="btn" id="spuMore" hidden>显示全部</button>
+        </div>
+        <section class="card">
+          <div class="card-head"><h2>商品明细表</h2><span class="muted">点列头排序 · 点货号看它的日趋势</span></div>
+          <div class="spu-summary" id="spuSummary"></div>
+          <div class="tbl-wrap spu-wrap"><table class="data-table sortable" id="spuTable"></table></div>
+          <div class="card-note" id="spuFootNote"></div>
+        </section>
+      </section>
+
+      <section id="view-category" hidden>
+        <div class="notice">
+          <strong>类目口径</strong>：<span id="catNoticeText">—</span>
+        </div>
+
+        <div class="spu-toolbar">
+          <input class="select" id="catSearch" type="search" placeholder="搜索类目" autocomplete="off">
+          <select class="select" id="catScope">
+            <option value="all">全部类目</option>
+            <option value="active">有成交或有推广花费</option>
+            <option value="sold">仅有成交</option>
+            <option value="ad">仅有推广花费</option>
+          </select>
+          <span class="chip ghost" id="catCount">—</span>
+        </div>
+        <section class="card">
+          <div class="card-head"><h2>类目明细表</h2><span class="muted">点列头排序 · 点类目看下钻</span></div>
+          <div class="spu-summary" id="catSummary"></div>
+          <div class="tbl-wrap spu-wrap"><table class="data-table sortable" id="catTable"></table></div>
+          <div class="card-note" id="catFootNote"></div>
+        </section>
+
+        <div class="card-head sub-head"><h2>单类目下钻</h2><span class="muted">选一个类目，看它的 KPI、日趋势、构成单品与日明细</span></div>
+        <div class="spu-toolbar">
+          <select class="select detail-pick" id="catPick" title="按本周期销售额排序"></select>
+          <span class="chip ghost" id="catRank">—</span>
+          <span class="spu-toolbar-spacer"></span>
+          <button class="btn" id="catPrev">◀ 上一类目</button>
+          <button class="btn" id="catNext">下一类目 ▶</button>
+        </div>
+
+        <div class="kpis" id="catKpis"></div>
+        <div class="profile" id="catProfile"></div>
+
+        <section class="card">
+          <div class="card-head"><h2>日销售额 · 线上 / 线下堆叠</h2>
+            <span class="legend"><i class="dot dot-on"></i>线上 <i class="dot dot-off"></i>线下 <i class="dot dot-cloud"></i>净销售额</span>
+          </div>
+          <div id="catChartGmv" class="trend"></div>
+          <div class="card-note">柱为当日销售额（线上成交 + 线下登记，按类目内 SPU 汇总），折线为净销售额（销售额 − 退款，退款按申请日归期、不追溯），单日可为负。</div>
+        </section>
+
+        <div class="cat-stack">
+          <section class="card">
+            <div class="card-head"><h2>访客与加购率</h2><span class="muted">加购率仅线上</span></div>
+            <div id="catChartVisit" class="trend"></div>
+            <div class="card-note">柱为日访客数（左轴，类目内 SPU 相加），线为当日加购人数 ÷ 访客数（右轴）。线下无访客概念。</div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>推广费用与 ROI</h2><span class="muted">按 SKU→SPU→类目归集</span></div>
+            <div id="catChartAd" class="trend"></div>
+            <div class="card-note">柱为当日推广花费（左轴），线为当日 ROI = 全渠道销售额 ÷ 花费（右轴）。花费为 0 的日子 ROI 断开不连。</div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head"><h2>构成单品</h2><span class="muted" id="catSpuNote">—</span></div>
+          <div class="tbl-wrap spu-wrap"><table class="data-table" id="catSpuTable"></table></div>
+          <div class="card-note" id="catSpuFootNote"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>日明细</h2><span class="muted" id="catRowsNote">—</span></div>
+          <div class="tbl-wrap detail-wrap"><table class="data-table" id="catDetailTable"></table></div>
+          <div class="card-note" id="catDetailFootNote"></div>
+        </section>
+      </section>
+
+      <section id="view-compare" hidden>
+        <div class="notice">
+          <strong>对比口径</strong>：<span id="cmpNoticeText">—</span>
+        </div>
+
+        <div class="spu-toolbar">
+          <input class="select" id="cmpSearch" type="search" placeholder="搜索货号 / SPU 编码" autocomplete="off">
+          <select class="select detail-pick" id="cmpPick" title="选中单品后下方显示它的环比与同比"></select>
+          <select class="select" id="cmpSort">
+            <option value="gmv">按本期销售额排序</option>
+            <option value="visitors">按访客排序</option>
+            <option value="spend">按花费排序</option>
+            <option value="add_customers">按加购数排序</option>
+            <option value="inq_persons">按询单数排序</option>
+          </select>
+          <span class="spu-toolbar-spacer"></span>
+          <button class="btn" id="cmpPrev">◀ 上一款</button>
+          <button class="btn" id="cmpNext">下一款 ▶</button>
+        </div>
+
+        <div class="kpis" id="cmpKpis" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
+
+        <section class="card">
+          <div class="card-head"><h2>本期 / 上一周期 / 去年同期 对照</h2>
+            <span class="muted" id="cmpHeadNote">—</span>
+          </div>
+          <div class="tbl-wrap"><table class="data-table cmp-table" id="cmpTable"></table></div>
+          <div class="card-note" id="cmpFootNote"></div>
+        </section>
+
+
+      </section>
+
+      <section id="view-diagnosis" hidden>
+        <div class="notice">
+          <strong>诊断口径</strong>：所有结论由当前周期数据与「之前 28 天」滚动基线自动比对得出，
+          <b>不设固定金额阈值</b>；异常判定 |z| ≥ 3（偏离基线 3 个标准差），样本不足 7 天不出结论。
+          比率指标（ROI / 加购率 / 退款率）用「分子和 ÷ 分母和」合并计算，避免 0 花费日产生极端值。
+          诊断只给线索、不改任何口径与数据；点预警上的「忽略」仅前端隐藏，不影响数据层。
+        </div>
+
+        <div class="diag-summary" id="diagSummary"></div>
+
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head"><h2>经营摘要 · 当期 vs 上一周期</h2><span class="muted" id="diagCompareNote">—</span></div>
+            <div class="tbl-wrap"><table class="data-table" id="diagKpiTable"></table></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>异常扫描 · 滚动 28 天基线</h2><span class="muted" id="diagAnomNote">—</span></div>
+            <div id="diagAnomalies"></div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head"><h2>变化归因 · 当期差额由谁贡献</h2><span class="muted" id="diagDriverNote">—</span></div>
+          <div class="spu-toolbar">
+            <select class="select" id="diagDriverMetric">
+              <option value="gmv">按成交额</option>
+              <option value="net_sales">按净销售额</option>
+              <option value="ad_spend">按推广花费</option>
+              <option value="visitors">按访客数</option>
+            </select>
+            <span class="spu-toolbar-spacer"></span>
+            <span class="muted" id="diagDriverTotal">—</span>
+          </div>
+          <div id="diagDrivers"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>预警清单</h2><span class="muted" id="diagAlertNote">—</span></div>
+          <div id="diagAlerts"></div>
+          <div class="card-note">忽略状态存在本机浏览器，点「恢复全部」重新显示；数据更新至新的一天会自动解除当天预警的忽略。</div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>转化漏斗 · 访客 → 加购 → 询单 → 成交</h2><span class="muted" id="funnelNote">—</span></div>
+          <div class="funnel-wrap" id="diagFunnel"></div>
+          <div class="tbl-wrap"><table class="data-table" id="funnelTable"></table></div>
+          <div class="card-note" id="funnelCaveat"></div>
+        </section>
+      </section>
+
+      <section id="view-other" hidden>
+        <div class="card empty-card">
+          <div class="empty-icon" id="emptyIcon">—</div>
+          <h2 id="emptyTitle">待接入</h2>
+          <p id="emptyDesc"></p>
+          <div class="card-note" id="emptyNote"></div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        口径规格：<code>metrics-spec.json</code> ｜ 数据集：<code>data/dataset.json</code> ｜
+        计算层：<code>engine/metrics.js</code> ｜ 数据接入：<code>engine/build_dataset.py</code>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="data/dataset.js?v=202611261101k"></script>
+<script src="engine/metrics.js?v=202611261101k"></script>
+<script src="assets/app.js?v=202611261101k"></script>
+<script src="assets/gate.js?v=202611261101k"></script>
+</body>
+</html>

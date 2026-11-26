@@ -1,0 +1,449 @@
+/* 2026-11-25 修：带 display:flex/grid 的元素（如 .periods）会盖掉 [hidden] 的
+   浏览器默认 display:none（UA 样式优先级低于作者样式），导致 hidden=true 仍显示。
+   加一条全局兜底，避免以后每个容器都要单独写 [hidden]。 */
+[hidden] { display: none !important; }
+
+:root {
+  --side: #1e2430;
+  --side-2: #262e3d;
+  --side-text: #c6cdd9;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --line: #e6e9ef;
+  --text: #1d2433;
+  --muted: #8590a2;
+  --accent: #4f6bed;
+  --up: #d93025;
+  --down: #16a34a;
+  --warn-bg: #fff8e6;
+  --warn-line: #f0d28a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font: 14px/1.55 -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased;
+}
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* 顶部工具栏 */
+.topbar {
+  height: 54px; flex: 0 0 54px; display: flex; align-items: center; gap: 18px;
+  padding: 0 18px; background: #fff; border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; letter-spacing: .4px; white-space: nowrap; }
+.brand-mark {
+  width: 26px; height: 26px; border-radius: 6px; background: var(--accent); color: #fff;
+  display: grid; place-items: center; font-size: 15px;
+}
+.brand em { font-style: normal; font-size: 11px; color: var(--muted); font-weight: 500; }
+.top-actions { display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; overflow-x: auto; }
+.select {
+  height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px;
+  background: #fafbfd; color: var(--text); font-size: 12px; max-width: 230px;
+}
+.btn {
+  height: 30px; padding: 0 11px; border: 1px solid var(--line); border-radius: 6px;
+  background: #fff; color: #4a5468; font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { border-color: #b9c4e0; background: #f7f9ff; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.todo { opacity: .72; }
+
+.body { display: flex; flex: 1; min-height: 0; }
+
+/* 左侧导航 */
+.sidebar {
+  width: 208px; flex: 0 0 208px; background: var(--side); color: var(--side-text);
+  display: flex; flex-direction: column; overflow-y: auto; padding: 12px 0;
+}
+.nav-group { padding: 6px 0 10px; }
+.nav-title { padding: 6px 18px; font-size: 11px; color: #6f7b8f; letter-spacing: 1px; }
+.nav-item {
+  display: block; padding: 8px 18px; font-size: 13px; color: var(--side-text);
+  cursor: pointer; border-left: 3px solid transparent; text-decoration: none;
+}
+.nav-item:hover { background: var(--side-2); color: #fff; }
+.nav-item.active { background: var(--side-2); color: #fff; border-left-color: var(--accent); }
+.sidebar-foot { margin-top: auto; padding: 14px 18px; font-size: 11px; color: #6f7b8f; line-height: 1.7; }
+.sidebar-foot span { color: #93a0b5; word-break: break-all; }
+
+/* 主区 */
+.main { flex: 1; min-width: 0; overflow-y: auto; padding: 20px 24px 28px; }
+.page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.sub { color: var(--muted); font-size: 12px; }
+.head-right { display: flex; gap: 8px; }
+.chip { padding: 4px 10px; border-radius: 20px; background: #e9edff; color: #3f54c4; font-size: 12px; }
+.chip.ghost { background: #eef1f5; color: #6b7689; }
+
+.notice {
+  background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px;
+  padding: 10px 14px; font-size: 12.5px; color: #7a5b12; margin-bottom: 16px;
+}
+.notice b { color: #a8791a; }
+.notice-sep { color: #d9bd7c; margin: 0 6px; }
+
+.periods { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.period {
+  height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px;
+  background: #fff; color: #59647a; font-size: 12px; cursor: pointer;
+}
+.period.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.compare-toggle { margin-left: 8px; font-size: 12px; color: #59647a; display: flex; align-items: center; gap: 5px; }
+
+/* 自然月选择器：参考京东商智「月」——年份 + 12 个月网格，无数据月份禁用 */
+.month-pick-wrap { position: relative; display: inline-flex; }
+.month-picker {
+  position: absolute; top: 36px; left: 0; z-index: 40; width: 258px;
+  padding: 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; box-shadow: 0 10px 30px rgba(20, 30, 60, .14);
+}
+.month-picker[hidden] { display: none; }
+.mp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13px; color: #3b4560; }
+.mp-nav { border: 0; background: transparent; color: var(--accent); font-size: 20px; line-height: 1; padding: 0 8px; cursor: pointer; }
+.mp-nav:disabled { color: #c9cfdb; cursor: default; }
+.mp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.mp-cell {
+  position: relative; height: 42px; border: 0; border-radius: 6px;
+  background: transparent; color: #3b4560; font-size: 13px; cursor: pointer;
+}
+.mp-cell:hover:not(:disabled) { background: #eef2ff; color: var(--accent); }
+.mp-cell.selected { background: #eef2ff; color: var(--accent); font-weight: 700; }
+.mp-cell:disabled { color: #c4cad6; cursor: default; }
+.mp-dot {
+  position: absolute; bottom: 4px; left: 50%; width: 5px; height: 5px;
+  margin-left: -2.5px; border-radius: 50%; background: var(--accent);
+}
+.mp-foot { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11px; color: #8a93a6; }
+
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.kpi {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 15px 16px;
+  min-height: 104px; position: relative;
+}
+/* 通栏卡：单品分析里「净销售额」下移后横跨整行，避免最后一行只剩一格留白 */
+.kpi-wide { grid-column: 1 / -1; min-height: 0; }
+.kpi-wide .value { font-size: 22px; }
+.kpi .name { font-size: 12px; color: var(--muted); }
+.kpi .value { font-size: 26px; font-weight: 700; letter-spacing: -.5px; margin: 6px 0 2px; }
+.kpi .delta { font-size: 12px; }
+.kpi .hint { font-size: 11px; color: #9aa4b4; margin-top: 6px; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
+
+.grid-2 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; margin-bottom: 14px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 15px 16px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.card-head h2 { font-size: 14px; margin: 0; }
+.card-head.sub-head { margin: 20px 0 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.card-head.sub-head h2 { font-size: 15px; }
+/* 类目下钻：两张辅助图上下堆叠、各占整宽，避免并排挤压 */
+.cat-stack { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 14px; }
+.muted { color: var(--muted); font-size: 11px; }
+.legend { font-size: 11px; color: var(--muted); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 4px 0 10px; }
+.dot-net { background: var(--accent); } .dot-spend { background: #f0a13c; }
+.dot-visitor { background: #4f6bed; } .dot-cust { background: #2bb673; }
+.trend-block { margin-bottom: 12px; }
+.trend-block:last-child { margin-bottom: 0; }
+.trend-block + .trend-block { border-top: 1px solid var(--line); padding-top: 12px; }
+.trend-block .legend { margin: 2px 0 6px; }
+.card-note { margin-top: 10px; font-size: 11px; color: var(--muted); line-height: 1.6; }
+.trend svg { width: 100%; height: 250px; display: block; }
+
+.validation-item {
+  display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid #f1f3f7; font-size: 12.5px;
+}
+.validation-item:last-child { border-bottom: 0; }
+.v-badge { margin-left: auto; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #eaf5ee; color: #1a7a45; }
+.v-badge.missing { background: #f2f4f7; color: #8a94a6; }
+.v-badge.deferred { background: #fff3df; color: #a8791a; }
+.v-detail { display: block; font-size: 11px; color: var(--muted); }
+
+.rank-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 12px; }
+.rank-name { width: 108px; flex: 0 0 108px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #47536a; }
+.rank-bar { flex: 1; height: 9px; background: #f0f2f7; border-radius: 5px; overflow: hidden; }
+.rank-bar i { display: block; height: 100%; background: linear-gradient(90deg, #6c82f2, #4f6bed); border-radius: 5px; }
+.rank-val { width: 92px; text-align: right; color: #47536a; font-variant-numeric: tabular-nums; }
+.rank-empty { color: var(--muted); font-size: 12px; padding: 12px 0; }
+
+.tbl-wrap { max-height: 340px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.data-table th, .data-table td { padding: 7px 9px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.data-table th { position: sticky; top: 0; background: #f4f6fb; color: #5a667d; font-weight: 600; z-index: 1; }
+.data-table th:first-child, .data-table td:first-child { text-align: left; }
+.data-table tbody tr:last-child td { border-bottom: 0; }
+.data-table tbody tr:hover { background: #f8faff; }
+
+/* 商品明细表：可排序表头 + 底部合计 + 工具条 */
+.data-table.sortable { font-size: 11px; }
+.data-table.sortable th, .data-table.sortable td { padding: 6px 8px; }
+.data-table.sortable th { cursor: pointer; user-select: none; }
+.data-table.sortable th:hover { color: #2b3242; }
+.data-table.sortable th.sorted { color: #2b3242; background: #e6ecf9; }
+.data-table th.ta-l, .data-table td.ta-l { text-align: left; }
+.data-table td.warn-cell { color: #a8660e; }
+/* 线下销售额：手工登记的数据，用淡底色区分「人填的」和「系统导的」 */
+.data-table td.off-cell { color: #5b4a9e; background: #f4f2fd; font-weight: 600; }
+.data-table tfoot td {
+  position: sticky; bottom: 0; background: #eef2fa; font-weight: 600; color: #2b3242;
+  border-top: 1px solid #d5dcea; border-bottom: 0;
+}
+.spu-wrap { max-height: 460px; }
+.spu-summary {
+  display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 14px; margin: 0 0 10px;
+  background: #f4f6fb; border: 1px solid var(--line); border-radius: 8px;
+  font-size: 11.5px; line-height: 1.4;
+}
+.spu-summary span { white-space: nowrap; }
+.spu-summary .k { color: var(--muted); margin-right: 4px; }
+.spu-summary b { color: #2b3242; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.spu-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
+.spu-toolbar input.select { min-width: 260px; }
+.spu-toolbar-spacer { flex: 1; }
+.spu-name { font-weight: 600; color: #2b3242; }
+.spu-link { font-weight: 600; color: #3f54c4; text-decoration: none; cursor: pointer; }
+.spu-link:hover { text-decoration: underline; }
+.spu-cat { color: var(--muted); margin-left: 7px; font-size: 10.5px; font-weight: 400; }
+.data-table td.neg { color: var(--down); }
+.data-table td.dim { color: var(--muted); }
+.conflict { padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 11.5px; line-height: 1.6; }
+.conflict:last-child { border-bottom: 0; }
+.conflict b { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 9px; margin-right: 6px; }
+.sev-critical { background: #fde9e9; color: #b3261e; }
+.sev-high { background: #fff0dc; color: #a8660e; }
+.sev-medium { background: #fff7df; color: #9a7a14; }
+.sev-low { background: #eef1f5; color: #7a8496; }
+.conflict .rule { display: block; color: var(--muted); margin-top: 3px; }
+
+.empty-card { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.empty-icon { font-size: 34px; color: #c3cad8; margin-bottom: 8px; }
+.empty-card h2 { font-size: 18px; margin: 0 0 8px; }
+.empty-card p { color: var(--muted); max-width: 520px; margin: 0; font-size: 13px; }
+
+.footer { margin-top: 10px; font-size: 11px; color: #9aa4b4; }
+.footer code { background: #eceff4; padding: 1px 5px; border-radius: 4px; }
+
+.toast {
+  position: fixed; right: 22px; bottom: 22px; background: #2a3242; color: #fff;
+  padding: 10px 16px; border-radius: 8px; font-size: 12.5px; opacity: 0;
+  transform: translateY(8px); transition: .2s; pointer-events: none; z-index: 99;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ---------------- 单品分析（单货号下钻） ---------------- */
+.detail-pick { min-width: 260px; max-width: 380px; font-size: 12.5px; }
+.grid-2.even { grid-template-columns: 1fr 1fr; }
+.detail-wrap { max-height: 460px; }
+/* 关键词花费表：词不多，不设滚动；「其他 N 个词」汇总行弱化 */
+.kw-wrap { max-height: none; }
+.kw-wrap td:first-child { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kw-wrap tr.kw-rest td { color: var(--muted); font-style: italic; background: #fafbfe; }
+/* 推广花费分布：一条堆叠条 + 图例，按场景组占该单品周期花费的比例 */
+.scene-bars {
+  display: flex; width: 100%; height: 24px; margin: 2px 0 10px;
+  border-radius: 6px; overflow: hidden; background: #eef1f6;
+}
+.scene-bars > span { display: block; height: 100%; min-width: 0; transition: width .2s; }
+.scene-bars > span[title] { cursor: help; }
+.scene-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 12px; font-size: 11px; color: #5a667d; }
+.scene-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.scene-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; }
+.scene-legend b { color: #2b3242; font-variant-numeric: tabular-nums; }
+.scene-table .scene-scenes { color: var(--muted); font-size: 10.5px; text-align: left; white-space: normal; }
+.dot-on { background: #4f6bed; }
+.dot-off { background: #8b72e8; }
+.dot-cloud { background: #f0a13c; }
+
+.profile { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.pill {
+  display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 11px;
+  background: #fff; border: 1px solid var(--line); border-radius: 8px; font-size: 12px;
+}
+.pill .pk { color: var(--muted); font-size: 11px; }
+.pill .pv { font-weight: 700; font-variant-numeric: tabular-nums; }
+.pill .pn { color: #9aa4b4; font-size: 10.5px; }
+
+@media (max-width: 1180px) {
+  .kpis, .kpis.k4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-2, .grid-2.even, .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* 在线分享版访问口令遮罩 */
+.gate {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #1b2440, #2a3a66);
+}
+.gate-box {
+  width: 320px; max-width: 86vw; background: #fff; border-radius: 14px;
+  padding: 28px 26px; box-shadow: 0 20px 50px rgba(0, 0, 0, .3); text-align: center;
+}
+.gate-title { font-size: 18px; font-weight: 800; color: #23304f; }
+.gate-sub { font-size: 13px; color: #8a93a6; margin: 8px 0 18px; }
+.gate-input {
+  width: 100%; box-sizing: border-box; padding: 11px 12px; font-size: 15px;
+  border: 1px solid #d6dbe6; border-radius: 9px; outline: none;
+}
+.gate-input:focus { border-color: var(--accent); }
+.gate .btn { width: 100%; margin-top: 14px; }
+.gate-err { color: #d9483b; font-size: 12.5px; min-height: 16px; margin-top: 10px; }
+
+/* ---------------- 计划分析：计划 × 关键词（2026-11-09） ---------------- */
+.pk-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 14px; align-items: start; }
+.pk-plans {
+  max-height: 470px; overflow-y: auto; border: 1px solid var(--line);
+  border-radius: 8px; background: #fafbfe;
+}
+.pk-plan {
+  display: block; width: 100%; box-sizing: border-box; text-align: left; cursor: pointer;
+  padding: 8px 11px; border: 0; border-bottom: 1px solid var(--line);
+  background: transparent; font-size: 11.5px; color: #2b3242;
+}
+.pk-plan:last-child { border-bottom: 0; }
+.pk-plan:hover { background: #eef2fd; }
+.pk-plan.active { background: #e6ecfd; box-shadow: inset 3px 0 0 var(--accent); }
+.pk-plan .pk-pname { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-plan .pk-pmeta { display: block; margin-top: 3px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pk-plan .pk-pmeta b { color: #2b3242; font-weight: 600; }
+.pk-detail { min-width: 0; }
+.pk-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.pk-toolbar input { min-width: 220px; max-width: 320px; }
+.pk-wrap { max-height: 430px; }
+.pk-wrap td:first-child { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-empty { padding: 28px 12px; text-align: center; color: var(--muted); font-size: 12px; }
+.chip.warn { background: #fff0dc; color: #a8660e; border-color: #f2d9ae; }
+.market-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.market-col { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: #fafbfe; }
+.market-col h3 { margin: 0 0 8px; font-size: 12.5px; color: #2b3242; }
+.market-col p, .market-col li { font-size: 11px; color: #5a667d; line-height: 1.7; }
+.market-col ul { margin: 6px 0 0; padding-left: 17px; }
+.market-col code { background: #eceff4; padding: 1px 5px; border-radius: 4px; font-size: 10.5px; }
+.market-tools { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.market-tools .select { flex: 1; }
+.market-scroll { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.market-scroll table { font-size: 11px; }
+.market-scroll th, .market-scroll td { padding: 3px 6px; white-space: nowrap; }
+.m-up { color: #1a8a3c; font-weight: 600; }
+.m-down { color: #c0392b; font-weight: 600; }
+.m-mid { color: #8a6d1a; }
+/* 每日推广：左侧选单品 / 右侧只列有花费的计划或场景明细 */
+.adspu-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 14px; align-items: start; }
+.adspu-picks { border: 1px solid var(--line); border-radius: 6px; background: #fafbfe; overflow: hidden; }
+.adspu-picks-head { padding: 8px 10px; font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+.adspu-pick-list { max-height: 480px; overflow: auto; }
+.adspu-pick { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%;
+  padding: 7px 10px; border: 0; border-bottom: 1px solid var(--line); background: transparent;
+  text-align: left; font-size: 11.5px; cursor: pointer; color: #2b3242; }
+.adspu-pick:hover { background: #eef3ff; }
+.adspu-pick.active { background: #e3ecff; color: #185fa5; }
+.adspu-pick .p-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adspu-pick .p-cnt { flex: none; font-size: 10.5px; color: #8a93a6; }
+.adspu-pick .p-val { flex: none; font-variant-numeric: tabular-nums; }
+.adspu-detail { min-width: 0; }
+.adspu-detail-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.adspu-detail-head h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.adspu-empty { padding: 36px 12px; text-align: center; color: var(--muted); font-size: 12px; }
+/* 计划名后的营销场景短标签，按场景类别配色 */
+.adspu-scene { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px;
+  font-size: 10.5px; white-space: nowrap; font-weight: 400; vertical-align: 1px; }
+.adspu-scene.s-keyword { background: #e8f1ff; color: #185fa5; }
+.adspu-scene.s-crowd { background: #f3ebff; color: #6b46a8; }
+.adspu-scene.s-shop { background: #e6f5ee; color: #0f6e56; }
+.adspu-scene.s-auto { background: #fff2e0; color: #a5600b; }
+.adspu-scene.s-other { background: #f1efe8; color: #5f5e5a; }
+@media (max-width: 900px) {
+  .pk-layout, .market-grid, .adspu-layout { grid-template-columns: 1fr; }
+  .pk-plans { max-height: 220px; }
+  .adspu-pick-list { max-height: 220px; }
+}
+
+.spu-count { color: var(--muted); font-size: 12px; }
+
+/* 数据对比（下钻式，2026-11-24 第二版） */
+.cmp-table th .th-sub { font-size: 10px; color: #a3acba; font-weight: 400; }
+.cmp-table td, .cmp-table th { padding: 9px 12px; }
+.cmp-table td.cmp-cur-cell { background: #eef4ff; font-weight: 600; }
+.cmp-table td.ta-l { color: var(--text); font-weight: 600; }
+.cmp-table tbody tr:hover td { background: #f8fafd; }
+.cmp-table tbody tr:hover td.cmp-cur-cell { background: #e4edff; }
+
+/* 数据对比 KPI：固定 4 列，避免 3+1 换行 */
+#cmpKpis { grid-template-columns: repeat(4, 1fr); }
+#cmpKpis .value { font-size: 24px; }
+@media (max-width: 1180px) { #cmpKpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+
+/* 每日推广：时间口径分段按钮（区间 / 单日），2026-11-25 */
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+.seg-btn { border: 0; background: transparent; padding: 6px 15px; font-size: 13px; line-height: 1.4;
+  color: var(--muted); cursor: pointer; font-family: inherit; }
+.seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+.seg-btn:hover { background: #f5f7fb; color: var(--text); }
+.seg-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
+.seg-btn.active:hover { background: var(--accent); color: #fff; }
+/* 单日模式下顶部周期条淡化，避免「当月高亮 + 单日数据」的矛盾观感 */
+#periods.is-dim { opacity: .55; }
+
+/* 周期条「单日」：点开后在按钮右侧出现日期输入框（2026-11-25） */
+.period-date { border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font-size: 13px;
+  font-family: inherit; color: var(--text); background: #fff; }
+.period-date:focus { outline: 2px solid #c9d6ff; outline-offset: 1px; }
+
+/* AI 诊断报表（2026-11-25） */
+.diag-summary { margin-bottom: 14px; }
+.diag-verdict { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 8px;
+  border: 1px solid var(--line); background: #fff; }
+.diag-verdict.good { border-color: #b7e4cd; background: #f2fbf6; }
+.diag-verdict.warn { border-color: var(--warn-line); background: var(--warn-bg); }
+.diag-verdict.bad { border-color: #f3c0bb; background: #fdf1ef; }
+.diag-verdict-tag { flex: none; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+  background: #eef1f6; color: var(--text); }
+.diag-verdict.good .diag-verdict-tag { background: #d8f3e4; color: #137a4a; }
+.diag-verdict.warn .diag-verdict-tag { background: #f7e5b4; color: #8a5a08; }
+.diag-verdict.bad .diag-verdict-tag { background: #f9d7d2; color: #a52a20; }
+.diag-verdict-text { font-size: 13px; line-height: 1.6; }
+.diag-anom { padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; background: #fff; }
+.diag-anom.good { border-left: 3px solid var(--down); }
+.diag-anom.bad { border-left: 3px solid var(--up); }
+.diag-anom-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+.diag-anom-z { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11.5px; }
+.diag-anom-body { font-size: 12px; color: #4b5566; margin-top: 3px; }
+.diag-anom-tip { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.diag-driver-row { display: grid; grid-template-columns: 130px minmax(0,1fr) 110px 48px; gap: 10px;
+  align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f2f6; font-size: 12px; }
+.diag-driver-row:last-child { border-bottom: 0; }
+.diag-driver-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: #185fa5; }
+.diag-driver-name:hover { text-decoration: underline; }
+.diag-driver-bar { height: 12px; background: #f0f2f6; border-radius: 3px; overflow: hidden; }
+.diag-driver-bar i { display: block; height: 100%; border-radius: 3px; }
+.diag-driver-bar i.up { background: var(--up); }
+.diag-driver-bar i.down { background: var(--down); }
+.diag-driver-val { text-align: right; font-variant-numeric: tabular-nums; }
+.diag-driver-val.up, .diag-driver-share.up { color: var(--up); }
+.diag-driver-val.down, .diag-driver-share.down { color: var(--down); }
+.diag-driver-share { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.diag-alert { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 7px; background: #fff; }
+.diag-alert.warn { border-left: 3px solid #e0a92a; }
+.diag-alert.bad { border-left: 3px solid var(--up); }
+.diag-alert.good { border-left: 3px solid var(--down); }
+.diag-alert-main { display: flex; gap: 9px; align-items: flex-start; min-width: 0; font-size: 12.5px; }
+.diag-alert-detail { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.diag-ignore { flex: none; padding: 3px 10px; font-size: 11.5px; }
+.funnel-wrap { padding: 8px 0 2px; }
+.funnel-svg { width: 100%; height: auto; display: block; }
+@media (max-width: 900px) { .diag-driver-row { grid-template-columns: 90px minmax(0,1fr) 90px 40px; } }
+
+/* 2026-11-25 修：cmpDeltaHtml 输出的 cmp-up/cmp-down 之前没有样式，
+   导致「数据对比 / AI诊断」的涨跌百分比全部同色。统一跟随 A 股习惯：涨红跌绿。 */
+.cmp-up { color: var(--up); }
+.cmp-down { color: var(--down); }
+.cmp-na { color: var(--muted); }
+
+/* 变化归因：全量维度列表限高滚动 + 吸顶表头（2026-11-25 用户要求，单品维度 7 条太少） */
+#diagDrivers { max-height: 336px; overflow-y: auto; overscroll-behavior: contain; }
+.diag-driver-head { display: grid; grid-template-columns: 130px minmax(0,1fr) 110px 48px; gap: 10px;
+  position: sticky; top: 0; z-index: 2; background: var(--card); padding: 6px 0 7px;
+  font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); }
+@media (max-width: 900px) { .diag-driver-head { grid-template-columns: 90px minmax(0,1fr) 90px 40px; } }
