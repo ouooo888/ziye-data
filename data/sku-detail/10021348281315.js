@@ -1,0 +1,1 @@
+window.__SKU_DETAIL__ = window.__SKU_DETAIL__ || {};window.__SKU_DETAIL__["10021348281315"] = {"spu":"10021348281315","fields":["visitors","gmv","customers","add_customers","spend","inquiry"],"rows":{"10034860992275":{"2025-12-06":[1.0,0.0,0.0,0.0,0.0,0]}}};

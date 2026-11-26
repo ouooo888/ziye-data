@@ -2595,17 +2595,35 @@
         '合计可能与该单品 SPU 级数字略有差异：未匹配 SKU→SPU 字典的行不进本表。';
     }
 
+    function fail(e) {
+      if (token !== skuReqToken) return;
+      note.textContent = '加载失败';
+      table.innerHTML = '<tbody><tr><td colspan="8" class="ta-l dim">SKU 明细加载失败：' +
+        esc(e && e.message ? e.message : e) +
+        '。桌面快捷方式用 file:// 打开时若失败，请用 http://127.0.0.1:8899/index.html 访问。</td></tr></tbody>';
+      foot.textContent = '';
+    }
     if (skuCache[keep]) { paint(skuCache[keep]); return; }
-    fetch('data/sku-detail/' + encodeURIComponent(keep) + '.json')
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function (data) { skuCache[keep] = data; paint(data); })
-      .catch(function (e) {
-        if (token !== skuReqToken) return;
-        note.textContent = '加载失败';
-        table.innerHTML = '<tbody><tr><td colspan="8" class="ta-l dim">SKU 明细加载失败：' +
-          esc(e.message) + '</td></tr></tbody>';
-        foot.textContent = '';
-      });
+
+    var base = 'data/sku-detail/' + encodeURIComponent(keep);
+    if (location.protocol === 'file:') {
+      // 桌面快捷方式是 file://，浏览器禁止 fetch 本地 JSON；用动态 <script src> 加载 JS 包装版
+      // （build_sku.py 同时生成 <SPU>.js，与主 dataset.js 同机制）。
+      var s = document.createElement('script');
+      s.src = base + '.js';
+      s.onload = function () {
+        var w = window.__SKU_DETAIL__ || {};
+        if (w[keep]) { skuCache[keep] = w[keep]; paint(w[keep]); }
+        else fail(new Error('数据文件已加载但内容为空'));
+      };
+      s.onerror = function () { fail(new Error('找不到 ' + keep + '.js（请重新运行 build_sku.py）')); };
+      document.head.appendChild(s);
+    } else {
+      fetch(base + '.json')
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (data) { skuCache[keep] = data; paint(data); })
+        .catch(fail);
+    }
   }
 
   function renderDetail() {
