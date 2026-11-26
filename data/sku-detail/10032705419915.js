@@ -1,1 +1,1 @@
-window.__SKU_DETAIL__ = window.__SKU_DETAIL__ || {};window.__SKU_DETAIL__["10032705419915"] = {"spu":"10032705419915","fields":["visitors","gmv","customers","add_customers","spend","inquiry"],"rows":{"10195000469543":{"2026-01-02":[1.0,0.0,0.0,0.0,0.0,0]}}};
+window.__SKU_DETAIL__ = window.__SKU_DETAIL__ || {};window.__SKU_DETAIL__["10032705419915"] = {"spu":"10032705419915","fields":["visitors","gmv","customers","add_customers","spend","inquiry"],"specs":{},"rows":{"10195000469543":{"2026-01-02":[1.0,0.0,0.0,0.0,0.0,0]}}};

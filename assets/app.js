@@ -2571,8 +2571,14 @@
       });
       out.sort(function (x, y) { return y.gmv - x.gmv; });
       note.textContent = range.start + ' ~ ' + range.end + ' · ' + out.length + ' 个 SKU';
+      var specs = data.specs || {};
       var cols = [
-        { label: 'SKU 编码', get: function (r) { return r.sku; }, raw: true, cls: 'ta-l' },
+        { label: 'SKU 规格', get: function (r) {
+            var sp = specs[r.sku];
+            return sp
+              ? '<span title="SKU ' + esc(r.sku) + '">' + esc(sp) + '</span>'
+              : '<span class="dim" title="无规格登记 · SKU ' + esc(r.sku) + '">' + esc(r.sku) + '</span>';
+          }, raw: true, cls: 'ta-l' },
         { label: '访客数', get: function (r) { return r.visitors; }, fmt: M.count },
         { label: '销售金额', get: function (r) { return r.gmv; }, fmt: M.money },
         { label: '销售人数', get: function (r) { return r.customers; }, fmt: M.count },
@@ -2590,6 +2596,7 @@
       foot.innerHTML = '合计：访客 ' + esc(M.count(tot.visitors)) + ' · 销售金额 ' + esc(M.money(tot.gmv)) +
         ' · 销售人数 ' + esc(M.count(tot.customers)) + ' · 加购人数 ' + esc(M.count(tot.add_customers)) +
         ' · 推广费用 ' + esc(M.money(tot.spend)) + ' · 询单人数 ' + esc(M.count(tot.inquiry)) +
+        '<br>第一列显示「SKU 规格」（来自全店sku表格.xlsx 的 SKU规格列），鼠标悬停看 SKU 编码；未登记规格的显示编码。' +
         '<br>销售/访客/加购来自「SKU 维度商品销售明细」（按日累加，同一顾客多日会重复计）；' +
         '推广费用按跟单 SKU ID 归集；询单人数按 (日期,顾客,SKU) 去重，不与其它列做严格漏斗。' +
         '合计可能与该单品 SPU 级数字略有差异：未匹配 SKU→SPU 字典的行不进本表。';
