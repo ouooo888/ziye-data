@@ -2527,6 +2527,87 @@
         : '');
   }
 
+  /* ==================== SKU 明细（2026-11-26）====================
+     数据源 data/sku-detail/<SPU>.json，由 engine/build_sku.py 按 SPU 拆分生成。
+     只在单品分析选中商品后按需加载，中位数 5KB/SPU，不进主 dataset.js。
+     口径：销售 4 项来自 SKU 维度商品明细；花费来自推广 CSV 跟单SKU ID；
+     询单人数按 (日期,顾客,SKU) 去重。加购率 = 加购人数 ÷ 访客（人次口径，不是区间去重）。 */
+  var skuCache = {};      // spu → {rows:{sku:{date:[...]}}}
+  var skuReqToken = 0;    // 切商品/周期时作废旧请求，避免乱序覆盖
+
+  function renderSkuDetail(keep, range) {
+    var note = $('skuNote'), table = $('skuTable'), foot = $('skuFootNote');
+    if (!note || !table) return;
+    if (!keep) {
+      note.textContent = '—'; table.innerHTML = ''; foot.textContent = ''; return;
+    }
+    var token = ++skuReqToken;
+    note.textContent = '加载中…';
+
+    function paint(data) {
+      if (token !== skuReqToken) return;   // 已被新请求取代
+      var fields = data.meta && data.meta.fields
+        ? data.meta.fields : ['visitors', 'gmv', 'customers', 'add_customers', 'spend', 'inquiry'];
+      var ix = {}; fields.forEach(function (f, i) { ix[f] = i; });
+      var out = [];
+      Object.keys(data.rows || {}).forEach(function (sku) {
+        var days = data.rows[sku], a = { sku: sku, visitors: 0, gmv: 0, customers: 0,
+          add_customers: 0, spend: 0, inquiry: 0, days: 0 };
+        Object.keys(days).forEach(function (d) {
+          if (d < range.start || d > range.end) return;
+          var v = days[d];
+          a.visitors += v[ix.visitors] || 0;
+          a.gmv += v[ix.gmv] || 0;
+          a.customers += v[ix.customers] || 0;
+          a.add_customers += v[ix.add_customers] || 0;
+          a.spend += v[ix.spend] || 0;
+          a.inquiry += v[ix.inquiry] || 0;
+          a.days++;
+        });
+        if (!a.days) return;
+        a.cart_rate = a.visitors > 0 ? a.add_customers / a.visitors : null;
+        a.roi = a.spend > 0 ? a.gmv / a.spend : null;
+        out.push(a);
+      });
+      out.sort(function (x, y) { return y.gmv - x.gmv; });
+      note.textContent = range.start + ' ~ ' + range.end + ' · ' + out.length + ' 个 SKU';
+      var cols = [
+        { label: 'SKU 编码', get: function (r) { return r.sku; }, raw: true, cls: 'ta-l' },
+        { label: '访客数', get: function (r) { return r.visitors; }, fmt: M.count },
+        { label: '销售金额', get: function (r) { return r.gmv; }, fmt: M.money },
+        { label: '销售人数', get: function (r) { return r.customers; }, fmt: M.count },
+        { label: '加购人数', get: function (r) { return r.add_customers; }, fmt: M.count },
+        { label: '加购率', get: function (r) { return r.cart_rate; }, fmt: M.pct },
+        { label: '推广费用', get: function (r) { return r.spend; }, fmt: M.money },
+        { label: '询单人数', get: function (r) { return r.inquiry; }, fmt: M.count }
+      ];
+      table.innerHTML = out.length ? tableHtml(cols, out) :
+        '<tbody><tr><td colspan="8" class="ta-l dim">该周期没有 SKU 级数据</td></tr></tbody>';
+      var tot = out.reduce(function (s, r) {
+        ['visitors', 'gmv', 'customers', 'add_customers', 'spend', 'inquiry'].forEach(function (k) { s[k] += r[k]; });
+        return s;
+      }, { visitors: 0, gmv: 0, customers: 0, add_customers: 0, spend: 0, inquiry: 0 });
+      foot.innerHTML = '合计：访客 ' + esc(M.count(tot.visitors)) + ' · 销售金额 ' + esc(M.money(tot.gmv)) +
+        ' · 销售人数 ' + esc(M.count(tot.customers)) + ' · 加购人数 ' + esc(M.count(tot.add_customers)) +
+        ' · 推广费用 ' + esc(M.money(tot.spend)) + ' · 询单人数 ' + esc(M.count(tot.inquiry)) +
+        '<br>销售/访客/加购来自「SKU 维度商品销售明细」（按日累加，同一顾客多日会重复计）；' +
+        '推广费用按跟单 SKU ID 归集；询单人数按 (日期,顾客,SKU) 去重，不与其它列做严格漏斗。' +
+        '合计可能与该单品 SPU 级数字略有差异：未匹配 SKU→SPU 字典的行不进本表。';
+    }
+
+    if (skuCache[keep]) { paint(skuCache[keep]); return; }
+    fetch('data/sku-detail/' + encodeURIComponent(keep) + '.json')
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (data) { skuCache[keep] = data; paint(data); })
+      .catch(function (e) {
+        if (token !== skuReqToken) return;
+        note.textContent = '加载失败';
+        table.innerHTML = '<tbody><tr><td colspan="8" class="ta-l dim">SKU 明细加载失败：' +
+          esc(e.message) + '</td></tr></tbody>';
+        foot.textContent = '';
+      });
+  }
+
   function renderDetail() {
     var range = currentRange();
     var pick = $('detailPick');
@@ -2689,6 +2770,7 @@
 
     renderDetailScene(keep, range, tot);
     renderDetailKw(keep, range, tot);
+    renderSkuDetail(keep, range);
   }
 
   /* ---------------- 类目分析：把「商品明细」的明细表 +「单品分析」的下钻换作类目主体 ----------------
